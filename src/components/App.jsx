@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 
 import Searchbar from './Searchbar';
 import ImageGallery from './ImageGallery';
@@ -6,112 +6,95 @@ import Button from './Button';
 import Loader from './Loader';
 import Modal from './Modal';
 import Notification from './Notification';
-import imagesFetch from '../services/imagesApi';
+import imagesFetch from '../services/imagesFetch';
 
-class App extends Component {
-  state = {
-    query: '',
-    images: [],
-    page: 1,
-    showLoader: false,
-    largeImageUrlAndTags: null,
-    totalImages: null,
-  };
+const App = () => {
+  const [query, setQuery] = useState('');
+  const [images, setImages] = useState([]);
+  const [page, setPage] = useState(1);
+  const [showLoader, setShowLoader] = useState(false);
+  const [largeImageUrlAndTags, setLargeImageUrlAndTags] = useState(null);
+  const [totalImages, setTotalImages] = useState(null);
 
-  async componentDidUpdate(prevProps, prevState) {
-    if (
-      prevState.query !== this.state.query ||
-      prevState.page !== this.state.page
-    ) {
-      try {
-        const dataImages = await imagesFetch(this.state.query, this.state.page);
-
-        setTimeout(() => {
-          this.setState(state => ({
-            images: [...state.images, ...dataImages.hits],
-            showLoader: false,
-            totalImages: dataImages.totalHits,
-          }));
-        }, 500);
-      } catch (error) {
-        console.log(error => ({ error, showLoader: false }));
-      }
-    }
-  }
-
-  handleSubmitSearch = newQuery => {
-    if (this.state.query === newQuery) {
+  useEffect(() => {
+    if (!query) {
       return;
     }
 
-    this.setState({
-      query: newQuery,
-      images: [],
-      page: 1,
-      showLoader: true,
-    });
+    imagesFetch(query, page)
+      .then(dataImages => {
+        setImages(prevImages => [...prevImages, ...dataImages.hits]);
+        setShowLoader(false);
+        setTotalImages(dataImages.totalHits);
+      })
+      .catch(error => {
+        console.log(error);
+        setShowLoader(false);
+      });
+  }, [query, page]);
+
+  const handleSubmitSearch = newQuery => {
+    if (query === newQuery) {
+      return;
+    }
+
+    setQuery(newQuery);
+    setImages([]);
+    setPage(1);
+    setShowLoader(true);
 
     window.scrollTo({ top: 0, left: 0 });
   };
 
-  handleLoadMore = () => {
-    this.setState(prevState => ({
-      page: prevState.page + 1,
-      showLoader: !prevState.showLoader,
-    }));
+  const handleLoadMore = () => {
+    setPage(prevPage => prevPage + 1);
+    setShowLoader(prevShowLoader => !prevShowLoader);
   };
 
-  handleGetLargeImageUrlAndTags = newImageUrlAndTags => {
-    this.setState({ largeImageUrlAndTags: newImageUrlAndTags });
+  const handleGetLargeImageUrlAndTags = newImageUrlAndTags => {
+    setLargeImageUrlAndTags(newImageUrlAndTags);
   };
 
-  handleModalClose = () => {
-    this.setState({ largeImageUrlAndTags: null });
+  const handleModalClose = () => {
+    setLargeImageUrlAndTags(null);
   };
 
-  render() {
-    const { images, showLoader, largeImageUrlAndTags, totalImages } =
-      this.state;
+  return (
+    <>
+      <Searchbar onSubmit={handleSubmitSearch} />
 
-    return (
-      <>
-        <Searchbar onSubmit={this.handleSubmitSearch} />
+      {totalImages === null && !showLoader && (
+        <Notification>Please Enter search query</Notification>
+      )}
 
-        {totalImages === null && !showLoader && (
-          <Notification>Please Enter search query</Notification>
-        )}
+      {totalImages === 0 && (
+        <Notification eventColor="red">Enter something normal :)</Notification>
+      )}
 
-        {totalImages === 0 && (
-          <Notification eventColor="red">
-            Enter something normal :)
-          </Notification>
-        )}
-
-        {images.length > 0 && (
-          <>
-            <ImageGallery
-              images={images}
-              onGetLargeImageUrlAndTags={this.handleGetLargeImageUrlAndTags}
-            />
-            {images.length < totalImages ? (
-              <Button onClick={this.handleLoadMore} />
-            ) : (
-              <Notification>The images are end!</Notification>
-            )}
-          </>
-        )}
-
-        {showLoader && <Loader />}
-
-        {largeImageUrlAndTags && (
-          <Modal
-            onModalClose={this.handleModalClose}
-            largeImage={largeImageUrlAndTags}
+      {images.length > 0 && (
+        <>
+          <ImageGallery
+            images={images}
+            onGetLargeImageUrlAndTags={handleGetLargeImageUrlAndTags}
           />
-        )}
-      </>
-    );
-  }
-}
+          {images.length < totalImages ? (
+            <Button onClick={handleLoadMore} />
+          ) : (
+            <Notification>The images are end!</Notification>
+          )}
+        </>
+      )}
+
+      {showLoader && <Loader />}
+
+      {largeImageUrlAndTags && (
+        <Modal
+          onModalClose={handleModalClose}
+          largeImage={largeImageUrlAndTags}
+        />
+      )}
+    </>
+  );
+};
 
 export default App;

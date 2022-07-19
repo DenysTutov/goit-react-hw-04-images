@@ -1,46 +1,40 @@
-import { Component } from 'react';
+import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import PropTypes from 'prop-types';
 import { Overlay, StyledModal } from './Modal.styled';
 
 const modalRoot = document.querySelector('#modal-root');
 
-class Modal extends Component {
-  componentDidMount() {
-    window.addEventListener('keydown', this.handleKeyDown);
-  }
-  componentWillUnmount() {
-    window.removeEventListener('keydown', this.handleKeyDown);
-  }
+const Modal = ({ largeImage, onModalClose }) => {
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyDown);
 
-  handleKeyDown = event => {
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  });
+
+  const handleKeyDown = event => {
     if (event.code === 'Escape') {
-      this.props.onModalClose();
+      onModalClose();
     }
   };
 
-  handleBackdropClick = event => {
+  const handleBackdropClick = event => {
     if (event.target === event.currentTarget) {
-      this.props.onModalClose();
+      onModalClose();
     }
   };
 
-  render() {
-    return createPortal(
-      <Overlay onClick={this.handleBackdropClick}>
-        <StyledModal>
-          <img
-            src={this.props.largeImage.largeUrl}
-            alt={this.props.largeImage.alt}
-          />
-        </StyledModal>
-      </Overlay>,
-      modalRoot
-    );
-  }
-}
-
-export default Modal;
+  return createPortal(
+    <Overlay onClick={handleBackdropClick}>
+      <StyledModal>
+        <img src={largeImage.largeUrl} alt={largeImage.alt} />
+      </StyledModal>
+    </Overlay>,
+    modalRoot
+  );
+};
 
 Modal.propTypes = {
   largeImage: PropTypes.shape({
@@ -49,3 +43,5 @@ Modal.propTypes = {
   }).isRequired,
   onModalClose: PropTypes.func.isRequired,
 };
+
+export default Modal;
